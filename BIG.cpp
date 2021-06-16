@@ -7,7 +7,7 @@ typedef uint64_t large;
 typedef int64_t slarge;
 
 const int SZ = 40; // size of array
-#define POW 16     // max value for base
+#define POW 8      // max value for base
 
 #define MAX (large(1U) << POW) - 1U
 #define RANGE(i, n) for (int i = 0; i < (int)n; i++)
@@ -24,7 +24,7 @@ inline big *signs(big *a, big *b);
 class big
 {
 public:
-    small l = 0;
+    small l = 1;
     small *data = (small *)malloc(sizeof(small) * SZ);
     char sign = 0; // zero is positive
     //unsigned char start = 0;
@@ -46,22 +46,24 @@ public:
         l = n.l;
         sign = n.sign;
         RANGE(i, SZ)
-        {
-            data[i] = n.data[i];
-        }
+        data[i] = n.data[i];
     }
     void zeros()
     {
-        RANGE(i, SZ) { data[i] = 0; }
+        RANGEr(i, l) { data[i] = 0; }
     }
 
     ~big() { free(data); }
 
     void operator+=(big &t);
     void operator+=(int t);
+    void operator-=(big &t);
+    void operator<<(int l);
+    void operator>>(int l);
+    void operator=(big a);
 };
 
-void big::operator+=(big &t)
+void big::operator+=(big &t) // works iff t>0
 {
     reuse = 0;
     l = max(l, t.l);
@@ -92,6 +94,96 @@ void big::operator+=(int t) // works iff t>=0
     }
 }
 
+void big::operator=(big a)
+{
+    sign = a.sign;
+    l = a.l;
+    RANGE(i, l)
+    data[i] = a.data[i];
+}
+
+void big::operator<<(int j)
+{
+    reuse = 0;
+    uint64_t helper = 0;
+    RANGE(i, l)
+    {
+        helper = data[i];
+        helper = helper << 1;
+        data[i] = helper & ((1U << POW) - 1U) | reuse;
+        reuse = helper >> POW;
+    }
+    if (reuse)
+        data[l++] = reuse;
+}
+void big::operator>>(int j)
+{
+    reuse = 0;
+    uint64_t helper = 0;
+    RANGEr(i, l)
+    {
+        reuse = data[i] & 1;
+        data[i] = (data[i] >> 1) | (helper << POW - 1);
+        helper = reuse;
+    }
+}
+void big::operator-=(big &x)
+{
+    reuse = (large)1 << POW;
+    l = max(l, x.l);
+    RANGE(j, l)
+    {
+        reuse = MAX + data[j] - x.data[j] + HI(reuse);
+        data[j] = LO(reuse);
+    }
+    sign = (int)HI(reuse) - 1;
+}
+
+int compare(big *a, big *b) // averagely const time, 1 if a > b
+{
+    RANGEr(i, SZ - 1)
+    {
+        if (a->data[i] > b->data[i])
+            return 1;
+        if (a->data[i] < b->data[i])
+            return -1;
+    }
+    return 0; // both are equal
+}
+
+bool operator>(big &a, big &b)
+{
+    if (a.sign == b.sign)
+    {
+        if (a.sign > 0)
+            return compare(&a, &b) == -1;
+        return compare(&a, &b) == 1;
+    }
+    if (a.sign > b.sign)
+        return 0;
+    return 1;
+}
+
+bool operator<(big &a, big &b)
+{
+    if (a.sign == b.sign)
+    {
+        if (a.sign > 0)
+            return compare(&a, &b) == 1;
+        return compare(&a, &b) == -1;
+    }
+    if (a.sign > b.sign)
+        return 1;
+    return 0;
+}
+
+inline bool operator==(big &a, big &b)
+{
+    if (a.sign == b.sign)
+        return compare(&a, &b) == 0;
+    return 0;
+}
+
 void print(big *b)
 {
     if (b->sign)
@@ -100,16 +192,6 @@ void print(big *b)
             cout
         << b->data[i] << " ";
     cout << " (base 2^" << POW << ")\n";
-}
-
-void decimal(big b)
-{
-    if (b.sign)
-        cout << "-";
-    unsigned long long sum = 0;
-    RANGEr(i, b.l - 1)
-        sum = (MAX + 1) * (sum) + b.data[i];
-    cout << sum << "\n";
 }
 
 big *addHelp(big *a, big *b) // adds two postive numbers
@@ -143,8 +225,8 @@ big *subHelp(big *a, big *b) // a- b // returns valid result if a>=b
 
 void mulSingle(big *z, big *x, small t, int start)
 {
-    z->zeros();
     z->l = start + x->l;
+    z->zeros();
     reuse = 0;
     RANGE(i, x->l)
     {
@@ -155,22 +237,22 @@ void mulSingle(big *z, big *x, small t, int start)
         z->data[z->l++] = HI(reuse);
 }
 
-// big *karatsuba(big *a, big *b, int a1, int a2, int b1, int b2)
-// {
-//     int l1 = max(a->l, b->l);
-//     int l2 = l1 / 2;
-//     if (a1 == a2 && b1 == b2)
-//     {
-//         big *z = new big();
-//         reuse = large(a->data[a1]) * b->data[b2];
-//         z->data[0] = LO(reuse);
-//         z->data[1] = HI(reuse);
-//         z->l = 1;
-//         if (HI(reuse))
-//             z->l++;
-//         return z;
-//     }
-// }
+big *karatsuba(big *a, big *b, int a1, int a2, int b1, int b2)
+{
+    int l1 = max(a->l, b->l); //chnge
+    int l2 = l1 / 2;
+    if (a1 == a2 && b1 == b2)
+    {
+        big *z = new big();
+        reuse = large(a->data[a1]) * b->data[b2];
+        z->data[0] = LO(reuse);
+        z->data[1] = HI(reuse);
+        z->l = 1;
+        if (HI(reuse))
+            z->l++;
+        return z;
+    }
+}
 
 big *mulHelp(big *a, big *b) // grade school n^2 algorithm
 {
@@ -184,18 +266,6 @@ big *mulHelp(big *a, big *b) // grade school n^2 algorithm
     c->sign = a->sign ^ b->sign;
     z.~big();
     return c;
-}
-
-int compare(big *a, big *b) // averagely const time, 1 if a > b
-{
-    RANGEr(i, SZ - 1)
-    {
-        if (a->data[i] > b->data[i])
-            return 1;
-        if (a->data[i] < b->data[i])
-            return -1;
-    }
-    return 0; // both are equal
 }
 
 inline big *signs(big *a, big *b)
@@ -213,6 +283,39 @@ inline big *signs(big *a, big *b)
         c = subHelp(a, b);
     c->sign ^= a->sign;
     return c;
+}
+
+big *divide(big *a, big *b)
+{
+    big place, zero, num, den;
+    big *ret = new big;
+    place += 1;
+
+    // copying
+    num = *a;
+    den = *b;
+    num.sign = 0;
+    den.sign = 0;
+
+    num >> 1;
+    while (!(num < den))
+    {
+        place << 1;
+        den << 1;
+    }
+    num = *a;
+    num.sign = 0;
+
+    for (; !(place == zero); place >> 1, den >> 1)
+    {
+        if (!(num < den))
+        {
+            num -= den;
+            *ret += place;
+        }
+    }
+    ret->sign = a->sign ^ b->sign;
+    return ret;
 }
 
 big *arithmetic(big *a, big *b, char i) // add if i == 1 , sub if i == -1
@@ -251,45 +354,16 @@ inline big &operator*(big &a, big &b)
     return *mulHelp(&b, &a);
 }
 
-inline bool operator==(big &a, big &b)
+inline big &operator/(big &a, big &b)
 {
-    if (a.sign == b.sign)
-        return compare(&a, &b) == 0;
-    return 0;
-}
-
-inline bool operator>(big &a, big &b)
-{
-    if (a.sign == b.sign)
-    {
-        if (a.sign > 0)
-            return compare(&a, &b) == -1;
-        return compare(&a, &b) == 1;
-    }
-    if (a.sign > b.sign)
-        return 0;
-    return 1;
-}
-
-inline bool operator<(big &a, big &b)
-{
-    if (a.sign == b.sign)
-    {
-        if (a.sign > 0)
-            return compare(&a, &b) == 1;
-        return compare(&a, &b) == -1;
-    }
-    if (a.sign > b.sign)
-        return 1;
-    return 0;
+    return *divide(&a, &b);
 }
 
 int main()
 {
-    big a("-777777777777777744444444444444781718771787444");
-    big b("0");
-    big c = a * b;
-    //c += 100;
-    string s = toDecimal(c.data, c.l, c.sign, POW);
+    big a("-1000000");
+    big b("1000000");
+    big d = a / b;
+    string s = toDecimal(d.data, d.l, d.sign, POW);
     cout << s;
 }
