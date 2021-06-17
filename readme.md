@@ -1,1 +1,2 @@
-run .\run.bat in cmd
+# bignum
+Run .\run.bat in cmd
