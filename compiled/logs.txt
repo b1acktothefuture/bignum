@@ -1,0 +1,12 @@
+// implemented addition, substraction, multiplication, division, left shift, right shift, operator overloading 
+// improve->
+decimal to binary (reverse double dabble)
+complete karatsuba
+work on 32 bit arithmetic 
+
+7.6.21 : implemented substraction and sign handling
+8.6.21 : operator overloading, removed cyclic referance for addition, added comaprators, removed dependency on length 'l'
+9.6.21 : part of multiplication and double dabble for easier debugging :: fix issue with multiplication
+10.6.21: multiplication complete(O(n^2))
+16.6.21: Added integer division
+17.6.21: left shift and right shift now works for all integer shifts, organised code to create a include file

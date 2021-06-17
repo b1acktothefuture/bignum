@@ -1,11 +1,4 @@
-#ifndef CONVERT_H
-#define CONVERT_H
-
-#include <string>
-#include <bits/stdc++.h>
-#include <math.h>
-typedef uint32_t small;
-using namespace std;
+#include "conversion.h"
 
 small Odd(string &s)
 {
@@ -137,5 +130,3 @@ string toDecimal(small *data, int l, bool sign, int POW)
         s = "-" + s;
     return s;
 }
-
-#endif
